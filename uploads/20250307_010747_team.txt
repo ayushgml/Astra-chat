@@ -1,0 +1,31 @@
+from typing import List
+from autogen_agentchat.teams import MagenticOneGroupChat
+from autogen_agentchat.conditions import MaxMessageTermination
+from autogen_core.models import ChatCompletionClient
+from autogen_agentchat.base import ChatAgent
+
+from ..config.settings import GROUP_CHAT_CONFIG
+from .base import BaseAgentSetup
+
+class MagenticOneTeam:
+    """Class for setting up and managing the MagenticOne team"""
+    
+    def __init__(self, model_client: ChatCompletionClient):
+        self.model_client = model_client
+        self.agent_setup = BaseAgentSetup(model_client)
+        self.config = GROUP_CHAT_CONFIG
+
+    def _create_termination_condition(self) -> MaxMessageTermination:
+        """Create the termination condition for the group chat"""
+        return MaxMessageTermination(self.config["max_messages"])
+
+    def create_team(self) -> MagenticOneGroupChat:
+        """Create and configure the MagenticOneGroupChat team"""
+        agents = self.agent_setup.create_all_agents()
+        termination = self._create_termination_condition()
+        
+        return MagenticOneGroupChat(
+            participants=agents,
+            model_client=self.model_client,
+            termination_condition=termination
+        ) 
