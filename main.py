@@ -690,10 +690,6 @@ def render_file_upload_section():
     """Render the file upload section in the interface."""
     st.subheader("📎 File Upload")
     
-    # Initialize last_uploaded_file in session state if it doesn't exist
-    if "last_uploaded_file" not in st.session_state:
-        st.session_state.last_uploaded_file = None
-    
     uploaded_file = st.file_uploader(
         "Upload a file",
         type=[ext[1:] for types in ALLOWED_FILE_TYPES.values() for ext in types],
@@ -701,55 +697,39 @@ def render_file_upload_section():
     )
     
     if uploaded_file:
-        # Check if this is a new file upload
-        current_file = f"{uploaded_file.name}_{uploaded_file.size}"
-        if st.session_state.last_uploaded_file != current_file:
-            st.session_state.last_uploaded_file = current_file
-            file_info = handle_file_upload(uploaded_file)
+        file_info = handle_file_upload(uploaded_file)
+        
+        if file_info:
+            st.success(f"✅ File uploaded successfully: {file_info['filename']}")
             
-            if file_info:
-                st.success(f"✅ File uploaded successfully: {file_info['filename']}")
-                
-                # Show file preview based on category
-                with st.expander("📄 File Preview", expanded=True):
-                    if file_info['category'] == 'image':
-                        image = Image.open(file_info['path'])
-                        st.image(image, caption=file_info['filename'])
-                    elif file_info['category'] == 'code':
-                        with open(file_info['path'], 'rb') as f:
+            # Show file preview based on category
+            with st.expander("📄 File Preview", expanded=True):
+                if file_info['category'] == 'image':
+                    image = Image.open(file_info['path'])
+                    st.image(image, caption=file_info['filename'])
+                elif file_info['category'] == 'code':
+                    with open(file_info['path'], 'rb') as f:
+                        content = f.read()
+                    st.markdown(preview_code(content, file_info['filename']), unsafe_allow_html=True)
+                else:
+                    try:
+                        with open(file_info['path'], 'r') as f:
                             content = f.read()
-                        st.markdown(preview_code(content, file_info['filename']), unsafe_allow_html=True)
-                    else:
-                        try:
-                            with open(file_info['path'], 'r') as f:
-                                content = f.read()
-                            st.text_area("File Content", content, height=200)
-                        except:
-                            st.warning("Preview not available for this file type")
-                
-                # Add file to chat context
-                if "current_files" not in st.session_state:
-                    st.session_state.current_files = []
-                st.session_state.current_files.append(file_info)
-                
-                # Read file content for context
-                try:
-                    with open(file_info['path'], 'r') as f:
-                        file_content = f.read()
-                    
-                    # Update chat context with file information and content
-                    context_message = {
-                        "role": "system",
-                        "content": f"User has uploaded a file: {file_info['filename']} ({file_info['category']} file, {file_info['size']} bytes)\n\nFile content:\n\n{file_content}"
-                    }
-                    st.session_state.messages.append(context_message)
-                except Exception as e:
-                    # If we can't read the file content (e.g., binary file), just add the metadata
-                    context_message = {
-                        "role": "system",
-                        "content": f"User has uploaded a file: {file_info['filename']} ({file_info['category']} file, {file_info['size']} bytes)"
-                    }
-                    st.session_state.messages.append(context_message)
+                        st.text_area("File Content", content, height=200)
+                    except:
+                        st.warning("Preview not available for this file type")
+            
+            # Add file to chat context
+            if "current_files" not in st.session_state:
+                st.session_state.current_files = []
+            st.session_state.current_files.append(file_info)
+            
+            # Update chat context with file information
+            context_message = {
+                "role": "system",
+                "content": f"User has uploaded a file: {file_info['filename']} ({file_info['category']} file, {file_info['size']} bytes)"
+            }
+            st.session_state.messages.append(context_message)
 
 # Initialize session state for chat history and model settings
 if "messages" not in st.session_state:
